@@ -1,0 +1,35 @@
+---
+- name: "Install MariaDB"
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - MySQL-python
+    - mariadb-server
+    
+- name: "Start the Mariadb service"
+  service: 
+    name: mariadb 
+    state: started
+    enabled: true
+
+- name: "Get the file for create.sql"
+  shell: ls -1 {{ zabbix_server_schema_path }}/create.sq*
+  changed_when: False
+  register: schema_path
+
+- name: "Create database and import file"
+  mysql_db:
+    name: "{{ zabbix_server_db_name | default('zabbix') }}"
+    encoding: "{{ zabbix_server_db_encoding | default('utf8') }}"
+    collation: "{{ zabbix_server_db_collation | default('utf8_bin') }}"
+    login_host: "{{ zabbix_server_db_host | default('localhost') }}"
+    state: import
+    target: "{{ schema_path.stdout }}" 
+
+- name: "Create database user"
+  mysql_user:
+    name: "{{ zabbix_server_db_user | default('zabbix') }}"
+    password: "{{ zabbix_server_db_password | default('zabbix') }}"
+    priv: "{{ zabbix_server_db_name | default('zabbix') }}.*:ALL "
+    state: present 

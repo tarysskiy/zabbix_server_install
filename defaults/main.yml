@@ -1,0 +1,54 @@
+---
+zabbix_server_major_version: 4.2
+
+zabbix_repo_url: "https://repo.zabbix.com/zabbix/{{ zabbix_server_major_version }}/rhel/{{ ansible_distribution_major_version }}/$basearch/"
+
+zabbix_non_supported_repo: "http://repo.zabbix.com/non-supported/rhel/{{ ansible_distribution_major_version }}/$basearch/"
+
+zabbix_repo_gpgchec: 0
+
+zabbix_repo_gpgcheck: "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-ZABBIX"
+
+zabbix_server_schema_path: "/usr/share/doc/zabbix-server-*"
+
+zabbix_server_database: mysql # mysql | pgsql
+
+zabbix_server_db_name: zabbix
+
+zabbix_server_db_user: zabbix
+
+zabbix_server_db_password: zabbix
+
+zabbix_server_db_encoding: utf8
+
+zabbix_server_db_collation: utf8_bin
+
+zabbix_server_db_host: localhost
+
+zabbix_server_db_port: 3306 # 3306 | 5432
+
+
+zabbix_web_use_ssl: 0 # 0 | 1
+
+httpd_ssl_dir: "/etc/httpd/ssl"
+
+zabbix_repo:
+  - name: zabbix
+    description: Zabbix Official Repository - $basearch
+    baseurl: "{{ zabbix_repo_url }}"
+    gpgcheck: "{{ zabbix_repo_gpgchec }}"
+    gpgkey: "{{ zabbix_repo_gpgcheck }}"
+    state: present
+  - name: zabbix-non-supported
+    description: Zabbix Official Repository non-supported - $basearch
+    baseurl: "{{ zabbix_non_supported_repo }}"
+    gpgcheck: "{{ zabbix_repo_gpgchec }}"
+    gpgkey: "{{ zabbix_repo_gpgcheck }}"
+    state: present
+
+zabbix_server_db_localhost: 1 # 1 | 0
+
+zabbix_alertscripts_dir: "/usr/lib/zabbix/alertscripts"
+
+telegram_bot_token: "TOKEN"
+slack_url: "WEBHOOK"

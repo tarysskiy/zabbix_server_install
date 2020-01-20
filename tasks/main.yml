@@ -1,0 +1,107 @@
+---
+- name: Get services facts
+  service_facts:
+
+- name: "Install zabbix repo file"
+  yum_repository:
+    name: "{{ item.name }}"
+    description: "{{ item.description }}"
+    baseurl: "{{ item.baseurl }}"
+    gpgcheck: "{{ item.gpgcheck }}"
+    gpgkey: "{{ item.gpgkey }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ zabbix_repo }}"
+
+- name: "Install zabbix-server"
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - "zabbix-server-{{ zabbix_server_database }}"
+    - "zabbix-web-{{ zabbix_server_database }}"
+
+- name: "Create zabbix-server config file"
+  template:
+    src: zabbix_server.conf.j2
+    dest: "/etc/zabbix/zabbix_server.conf"
+    owner: root
+    group: zabbix
+    mode: 0644
+
+- name: "Create zabbix-web config file"
+  template:
+    src: "zabbix.conf.php.j2"
+    dest: "/etc/zabbix/web/zabbix.conf.php"
+    owner: apache
+    group: apache
+    mode: 0644
+
+- name: "Create zabbix-httpd config file"
+  template:
+    src: "httpd/zabbix.conf.j2"
+    dest: "/etc/httpd/conf.d/zabbix.conf"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: "Use SSL for httpd"
+  block:
+    - name: "Install httpd mod_ssl"
+      yum:
+        name: "mod_ssl"
+        state: present  
+
+    - name: "Create SSL dir"
+      file:
+        path: "{{ httpd_ssl_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0644 
+    
+    # - name: copy ssl keys
+    #   copy:
+    #     src: "/files/key/"
+    #     dest: "{{ httpd_ssl_dir }}"
+    #     owner: "root"
+    #     group: "root"
+    #     mode: 0644
+    #   loop: "{{ zabbix_conf_files + zabbix_global_conf_files }}"
+
+  when: zabbix_web_use_ssl|int > 0 
+
+- name: "Check alertscripts dir"
+  file:
+    path: "{{ zabbix_alertscripts_dir }}"
+    state: directory
+    recurse: yes
+
+- name: "Add alertscripts"
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: zabbix
+    group: zabbix
+    mode: 0774
+  loop:
+    - src: "alertscripts/zabbix_telegram.sh.j2"
+      dest: "{{ zabbix_alertscripts_dir }}/zabbix_telegram.sh"
+    - src: "alertscripts/slack.sh.j2"
+      dest: "{{ zabbix_alertscripts_dir }}/slack.sh"
+
+- name: "install and settings MariaDB"
+  include: mysql.yml
+  when: ( zabbix_server_database == "mysql" ) and ( zabbix_server_db_localhost|int > 0 )
+
+- name: "install and settings MariaDB"
+  include: postgresql.yml
+  when: ( zabbix_server_database == "pgsql" ) and ( zabbix_server_db_localhost|int > 0 )
+
+- name: "Started zabbix-server and zabbix-web (httpd)"
+  service:
+    name: "{{ item }}"
+    state: restarted
+    enabled: yes
+  loop:
+    - "httpd"
+    - "zabbix-server"  
